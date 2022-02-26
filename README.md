@@ -1,6 +1,8 @@
 # Google Photos Takeout Organizer
 A script which organizes Google Photos Takeout files
 
+I don't plan to adjust the script much, but PRs are welcome.
+
 # Instructions
 1. Download your takeout zip files from Google Photos
 2. Extract all takeout zip files to a directory
