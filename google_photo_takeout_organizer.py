@@ -3,15 +3,33 @@ from pathlib import Path
 import json
 import datetime
 from tqdm import tqdm
+import zipfile
+import os
 
 # Start configuration
 takeout = Path("D:\\Photos\\Google Photos")  # Path to the directory containing the Google Photos
 output = Path("D:\\Photos\\Organized")  # Path to the output directory for organizing the photos
 keep_original_titles = True  # Whether to keep the original titles of the photos or generate new ones
 title_format = '%Y-%m-%d %H-%M-%S'  # Format for generating new titles
-copy = True  # Whether to copy the files or move them
+should_copy = True  # Whether to copy the files or move them
 allow_duplicates = False  # Whether to allow duplicate files in the output directory
+should_extract_zip_files = True  # Whether to extract zip files in the takeout directory (deletes the zip files after extracting)
 # End configuration
+
+zip_files = list(takeout.rglob("*.zip"))  # Get a list of all zip files
+if should_extract_zip_files:
+    with tqdm(total=len(zip_files), desc='Extracting zip files') as pbar:
+        for zip_file in zip_files:
+            with zipfile.ZipFile(zip_file, 'r') as zip_ref:
+                # Need to manually extract the zip file because the default extract method doesn't work when there's a space in the file name (at the end of a directory name)
+                for zip_info in zip_ref.infolist():
+                    target_path = os.path.join(takeout, zip_info.filename)
+                    target_path = target_path.replace(' /', '/')
+                    os.makedirs(os.path.dirname(target_path), exist_ok=True)
+                    with zip_ref.open(zip_info) as source, open(target_path, 'wb') as target:
+                        target.write(source.read())
+            zip_file.unlink()
+            pbar.update(1)
 
 photo_metadata = list(takeout.rglob("*.json"))  # Get a list of all JSON metadata files
 ignored_files = [
@@ -77,7 +95,7 @@ def move(from_path, to_path):
         to_path = parent / (name + " (" + str(n) + ")" + extension)
         n += 1
     
-    if copy:
+    if should_copy:
         shutil.copy(from_path, to_path)
     else:
         shutil.move(from_path, to_path)
