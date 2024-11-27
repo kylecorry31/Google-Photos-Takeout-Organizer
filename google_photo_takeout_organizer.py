@@ -7,8 +7,8 @@ import zipfile
 import os
 
 # Start configuration
-takeout = Path("D:\\Photos\\Google Photos")  # Path to the directory containing the Google Photos
-output = Path("D:\\Photos\\Organized")  # Path to the output directory for organizing the photos
+takeout = Path("./takeout")  # Path to the directory containing the Google Photos
+output = Path("./output")  # Path to the output directory for organizing the photos
 keep_original_titles = True  # Whether to keep the original titles of the photos or generate new ones
 title_format = '%Y-%m-%d %H-%M-%S'  # Format for generating new titles
 should_copy = True  # Whether to copy the files or move them
