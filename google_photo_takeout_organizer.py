@@ -5,6 +5,7 @@ import datetime
 from tqdm import tqdm
 import zipfile
 import os
+from PIL import Image
 
 # Start configuration
 takeout = Path("./takeout")  # Path to the directory containing the Google Photos
@@ -14,6 +15,9 @@ title_format = '%Y-%m-%d %H-%M-%S'  # Format for generating new titles
 should_copy = True  # Whether to copy the files or move them
 allow_duplicates = False  # Whether to allow duplicate files in the output directory
 should_extract_zip_files = True  # Whether to extract zip files in the takeout directory (deletes the zip files after extracting)
+should_compress = False # Whether to convert images to WebP format
+compression_quality = 100 # Quality for WebP compression (0-100)
+max_image_size = None # Maximum size for images (width, height) to be compressed (None for no limit)
 # End configuration
 
 zip_files = list(takeout.rglob("*.zip"))  # Get a list of all zip files
@@ -74,6 +78,28 @@ def should_rename(from_path, to_path):
     
     # Their sizes are different, so they are different files and we should rename
     return from_path.stat().st_size != to_path.stat().st_size
+
+def compress(path):
+    if not should_compress:
+        return path
+    
+    if str(path).lower().endswith(('.jpg', '.jpeg', '.png', '.webp')):
+        try:
+            image = Image.open(path)
+            new_path = path.with_suffix('.webp')
+
+            if max_image_size:
+                image.thumbnail(max_image_size)
+
+            image.save(new_path, 'webp', quality=85)
+            os.remove(path)
+            return new_path
+        except:
+            pass
+
+    return path
+    
+
 
 def move(from_path, to_path):
     """
@@ -167,4 +193,5 @@ with tqdm(total=len(photo_metadata)) as pbar:
             pbar.update(1)
             continue
         move(path, dest)
+        compress(dest)
         pbar.update(1)
