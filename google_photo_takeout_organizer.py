@@ -22,6 +22,7 @@ should_extract_zip_files = True  # Whether to extract zip files in the takeout d
 should_compress = False # Whether to convert images to WebP format
 compression_quality = 100 # Quality for WebP compression (0-100)
 max_image_size = None # Maximum size for images (width, height) to be compressed (None for no limit)
+take_edited_photos = True
 # End configuration
 
 zip_files = list(takeout.rglob("*.zip"))  # Get a list of all zip files
@@ -132,6 +133,13 @@ def move(from_path, to_path):
     
     return to_path
 
+def find_media_file_with_stem(folder, stem):
+    paths = folder.glob(stem + "*")
+    for p in paths:
+        if p.suffix != '.json':
+            return p
+    return None
+
 def get_image_path(json_path, json):
     """
     Get the file path of the image associated with the given JSON metadata.
@@ -143,17 +151,36 @@ def get_image_path(json_path, json):
     Returns:
         pathlib.Path: The file path of the associated image.
     """
+
     stem = json_path.stem
+    while stem.count('.') > 1:
+        stem = os.path.splitext(stem)[0]
     path = json_path.parent / stem
     if not path.exists():
-        paths = json_path.parent.glob(stem + "*")
-        for p in paths:
-            if p != json_path and p.suffix != '.json':
-                path = p
-                break
+        p = find_media_file_with_stem(json_path.parent, os.path.splitext(stem)[0] + '.')
+        if p is not None:
+            path = p
     if not path.exists():
-        name = json['title']
-        path = json_path.parent / name
+        p = find_media_file_with_stem(json_path.parent, json['title'].replace("'", '_'))
+        if p is not None:
+            path = p
+    if not path.exists():
+        # Truncation may have occurred
+        p = find_media_file_with_stem(json_path.parent, os.path.splitext(stem)[0])
+        if p is not None:
+            path = p
+
+    # Check if the -edited path exists
+    if take_edited_photos:
+        edited_stem = os.path.splitext(stem)[0] + '-edited' + os.path.splitext(stem)[1]
+        edited_path = json_path.parent / edited_stem
+        if not edited_path.exists():
+            p = find_media_file_with_stem(json_path.parent, os.path.splitext(edited_stem)[0] + '.')
+            if p is not None:
+                path = p
+        if edited_path.exists():
+            path = edited_path
+    
     return path
 
 with tqdm(total=len(photo_metadata)) as pbar:
