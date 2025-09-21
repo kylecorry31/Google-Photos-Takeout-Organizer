@@ -6,6 +6,10 @@ from tqdm import tqdm
 import zipfile
 import os
 from PIL import Image
+import warnings
+
+# Suppress PIL warnings
+warnings.filterwarnings("ignore", category=UserWarning, module="PIL")
 
 # Start configuration
 takeout = Path("./takeout")  # Path to the directory containing the Google Photos
@@ -125,6 +129,8 @@ def move(from_path, to_path):
         shutil.copy(from_path, to_path)
     else:
         shutil.move(from_path, to_path)
+    
+    return to_path
 
 def get_image_path(json_path, json):
     """
@@ -192,6 +198,16 @@ with tqdm(total=len(photo_metadata)) as pbar:
             print(path, 'not found')
             pbar.update(1)
             continue
-        move(path, dest)
-        compress(dest)
+        # If the photo is missing the DateTimeOriginal exif metadata, add it
+        try:
+            image = Image.open(path)
+            exif = image.getexif()
+            if 36867 not in exif:
+                exif[36867] = time.strftime('%Y:%m:%d %H:%M:%S')
+                image.save(path, exif=exif)
+        except:
+            pass
+        dest = move(path, dest)
+        dest = compress(dest)
+
         pbar.update(1)
